@@ -16,14 +16,14 @@ export default function Products() {
 
   const load = () => {
     setLoading(true);
-    getProducts().then(r => setProducts(r.data)).catch(() => flash('error','Failed to load products')).finally(() => setLoading(false));
+    getProducts().then(r => setProducts(r.data)).catch(() => flash('error', 'Failed to load products')).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
-  const flash = (type, msg) => { setAlert({type, msg}); setTimeout(() => setAlert(null), 4000); };
+  const flash = (type, msg) => { setAlert({ type, msg }); setTimeout(() => setAlert(null), 4000); };
 
   const openAdd = () => { setForm(EMPTY); setErrors({}); setEditing(null); setModal(true); };
-  const openEdit = (p) => { setForm({name:p.name,sku:p.sku,price:String(p.price),quantity:String(p.quantity)}); setErrors({}); setEditing(p); setModal(true); };
+  const openEdit = (p) => { setForm({ name: p.name, sku: p.sku, price: String(p.price), quantity: String(p.quantity) }); setErrors({}); setEditing(p); setModal(true); };
   const closeModal = () => { setModal(false); setEditing(null); };
 
   const validate = () => {
@@ -72,76 +72,204 @@ export default function Products() {
       {alert && <div className={`alert alert-${alert.type}`}>{alert.msg}</div>}
 
       {loading ? (
-        <div className="loading"><div className="spinner"></div>Loading products...</div>
+        <div className="loading">
+          <div className="spinner"></div>
+          Loading products...
+        </div>
       ) : (
-        <div className="table-wrap">
-          <div className="table-toolbar">
-            <div className="table-info">
-              <div className="table-title">Product Catalog</div>
-              <div className="table-count">{filtered.length} of {products.length} products</div>
+        <>
+          <div className="products-hero">
+            <div>
+              <h1>📦 Product Inventory</h1>
+              <p>
+                Manage products, pricing and inventory levels.
+              </p>
             </div>
-            <input
-              className="form-input"
-              style={{width: '220px'}}
-              placeholder="Search by name or SKU..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+
+            <button
+              className="btn btn-primary"
+              onClick={openAdd}
+            >
+              + Add Product
+            </button>
           </div>
+
+          <div className="product-stats-grid">
+
+            <div className="product-stat-card">
+              <div className="product-stat-icon">📦</div>
+              <div className="product-stat-number">
+                {products.length}
+              </div>
+              <div className="product-stat-label">
+                Total Products
+              </div>
+            </div>
+
+            <div className="product-stat-card">
+              <div className="product-stat-icon">✅</div>
+              <div className="product-stat-number">
+                {products.filter(
+                  p => p.quantity > 5
+                ).length}
+              </div>
+              <div className="product-stat-label">
+                In Stock
+              </div>
+            </div>
+
+            <div className="product-stat-card">
+              <div className="product-stat-icon">⚠️</div>
+              <div className="product-stat-number">
+                {products.filter(
+                  p => p.quantity > 0 &&
+                    p.quantity <= 5
+                ).length}
+              </div>
+              <div className="product-stat-label">
+                Low Stock
+              </div>
+            </div>
+
+            <div className="product-stat-card">
+              <div className="product-stat-icon">❌</div>
+              <div className="product-stat-number">
+                {products.filter(
+                  p => p.quantity === 0
+                ).length}
+              </div>
+              <div className="product-stat-label">
+                Out of Stock
+              </div>
+            </div>
+
+          </div>
+
+          <div className="products-toolbar">
+
+            <div className="products-search">
+              <span>🔍</span>
+
+              <input
+                className="products-search-input"
+                placeholder="Search products..."
+                value={search}
+                onChange={(e) =>
+                  setSearch(e.target.value)
+                }
+              />
+            </div>
+
+          </div>
+
           {filtered.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">📦</div>
-              <div className="empty-title">{search ? 'No products match your search' : 'No products yet'}</div>
-              <div className="empty-desc">{search ? 'Try a different search term' : 'Add your first product to get started'}</div>
+
+              <div className="empty-title">
+                No products found
+              </div>
+
+              <div className="empty-desc">
+                Try another search term
+              </div>
             </div>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th>SKU</th>
-                  <th>Price</th>
-                  <th>Stock</th>
-                  <th>Status</th>
-                  <th>Added</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(p => (
-                  <tr key={p.id}>
-                    <td>
-                      <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                        <div className="product-thumb">📦</div>
-                        <div>
-                          <div style={{fontWeight:500}}>{p.name}</div>
-                          <div style={{fontSize:'11px', color:'var(--text-muted)', marginTop:'1px'}}>ID #{p.id}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td><span className="td-mono">{p.sku}</span></td>
-                    <td><span style={{fontWeight:600}}>₹{p.price.toLocaleString('en-IN', {minimumFractionDigits:2})}</span></td>
-                    <td><span style={{fontWeight:500}}>{p.quantity.toLocaleString()}</span></td>
-                    <td>
-                      <span className={`badge ${p.quantity === 0 ? 'badge-danger' : p.quantity <= 5 ? 'badge-warning' : 'badge-success'}`}>
-                        {p.quantity === 0 ? 'Out of stock' : p.quantity <= 5 ? 'Low stock' : 'In stock'}
-                      </span>
-                    </td>
-                    <td><span className="td-secondary">{new Date(p.created_at).toLocaleDateString('en-IN')}</span></td>
-                    <td>
-                      <div style={{display:'flex', gap:'6px'}}>
-                        <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)}>Edit</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(p)}>Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+            <div className="products-grid">
 
+              {filtered.map((p) => (
+
+                <div
+                  key={p.id}
+                  className="product-card"
+                >
+
+                  <div className="product-card-top">
+
+                    <div className="product-avatar">
+                      {p.name.charAt(0).toUpperCase()}
+                    </div>
+
+                    <span
+                      className={`badge ${p.quantity === 0
+                          ? "badge-danger"
+                          : p.quantity <= 5
+                            ? "badge-warning"
+                            : "badge-success"
+                        }`}
+                    >
+                      {p.quantity === 0
+                        ? "Out of Stock"
+                        : p.quantity <= 5
+                          ? "Low Stock"
+                          : "In Stock"}
+                    </span>
+
+                  </div>
+
+                  <h3 className="product-name">
+                    {p.name}
+                  </h3>
+
+                  <div className="product-sku">
+                    SKU: {p.sku}
+                  </div>
+
+                  <div className="product-price">
+                    ₹
+                    {p.price.toLocaleString(
+                      "en-IN",
+                      {
+                        minimumFractionDigits: 2
+                      }
+                    )}
+                  </div>
+
+                  <div className="product-stock">
+                    Stock Available:
+                    <strong>
+                      {" "}
+                      {p.quantity}
+                    </strong>
+                  </div>
+
+                  <div className="product-date">
+                    Added on{" "}
+                    {new Date(
+                      p.created_at
+                    ).toLocaleDateString("en-IN")}
+                  </div>
+
+                  <div className="product-actions">
+
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() =>
+                        openEdit(p)
+                      }
+                    >
+                      ✏️ Edit
+                    </button>
+
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() =>
+                        handleDelete(p)
+                      }
+                    >
+                      🗑 Delete
+                    </button>
+
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+          )}
+        </>
+      )}
       {modal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
           <div className="modal">
@@ -153,24 +281,24 @@ export default function Products() {
               {errors.api && <div className="alert alert-error">{errors.api}</div>}
               <div className="form-group">
                 <label className="form-label">Product Name *</label>
-                <input className="form-input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g. Wireless Keyboard" />
+                <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Wireless Keyboard" />
                 {errors.name && <div className="form-error">{errors.name}</div>}
               </div>
               <div className="form-group">
                 <label className="form-label">SKU / Code *</label>
-                <input className="form-input" value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} placeholder="e.g. WK-001" />
+                <input className="form-input" value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} placeholder="e.g. WK-001" />
                 {errors.sku && <div className="form-error">{errors.sku}</div>}
                 <div className="form-hint">Must be unique. Will be auto-uppercased.</div>
               </div>
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Price (₹) *</label>
-                  <input className="form-input" type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({...form, price: e.target.value})} placeholder="0.00" />
+                  <input className="form-input" type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="0.00" />
                   {errors.price && <div className="form-error">{errors.price}</div>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Qty in Stock *</label>
-                  <input className="form-input" type="number" min="0" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} placeholder="0" />
+                  <input className="form-input" type="number" min="0" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} placeholder="0" />
                   {errors.quantity && <div className="form-error">{errors.quantity}</div>}
                 </div>
               </div>
