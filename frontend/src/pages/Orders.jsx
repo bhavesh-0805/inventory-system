@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { getOrders, createOrder, deleteOrder, getProducts, getCustomers } from '../services/api';
 
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+}
+
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
-  const [detailModal, setDetailModal] = useState(null);
+  const [detailOrder, setDetailOrder] = useState(null);
   const [form, setForm] = useState({ customer_id: '', items: [{ product_id: '', quantity: '1' }] });
   const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState(null);
@@ -16,46 +20,35 @@ export default function Orders() {
   const load = () => {
     setLoading(true);
     Promise.all([getOrders(), getProducts(), getCustomers()])
-      .then(([o, p, c]) => { setOrders(o.data); setProducts(p.data); setCustomers(c.data); })
-      .catch(() => showAlert('error', 'Failed to load data'))
+      .then(([o,p,c]) => { setOrders(o.data); setProducts(p.data); setCustomers(c.data); })
+      .catch(() => flash('error','Failed to load data'))
       .finally(() => setLoading(false));
   };
-
   useEffect(() => { load(); }, []);
 
-  const showAlert = (type, msg) => {
-    setAlert({ type, msg });
-    setTimeout(() => setAlert(null), 4000);
-  };
+  const flash = (type, msg) => { setAlert({type, msg}); setTimeout(() => setAlert(null), 4000); };
 
-  const openAdd = () => {
-    setForm({ customer_id: '', items: [{ product_id: '', quantity: '1' }] });
-    setErrors({});
-    setModal(true);
-  };
-  const closeModal = () => setModal(false);
+  const openCreate = () => { setForm({ customer_id: '', items: [{ product_id: '', quantity: '1' }] }); setErrors({}); setModal(true); };
 
-  const addItem = () => setForm({ ...form, items: [...form.items, { product_id: '', quantity: '1' }] });
-  const removeItem = (i) => setForm({ ...form, items: form.items.filter((_, idx) => idx !== i) });
+  const addItem = () => setForm({...form, items: [...form.items, { product_id: '', quantity: '1' }]});
+  const removeItem = i => setForm({...form, items: form.items.filter((_,idx) => idx !== i)});
   const updateItem = (i, field, val) => {
     const items = [...form.items];
-    items[i] = { ...items[i], [field]: val };
-    setForm({ ...form, items });
+    items[i] = {...items[i], [field]: val};
+    setForm({...form, items});
   };
 
   const estimatedTotal = form.items.reduce((sum, item) => {
     const p = products.find(p => String(p.id) === String(item.product_id));
-    if (!p || !item.quantity) return sum;
-    return sum + p.price * Number(item.quantity);
+    return p && item.quantity ? sum + p.price * Number(item.quantity) : sum;
   }, 0);
 
   const validate = () => {
     const e = {};
-    if (!form.customer_id) e.customer_id = 'Select a customer';
-    if (form.items.length === 0) e.items = 'Add at least one item';
+    if (!form.customer_id) e.customer_id = 'Please select a customer';
     form.items.forEach((item, i) => {
-      if (!item.product_id) e[`product_${i}`] = 'Select product';
-      if (!item.quantity || Number(item.quantity) <= 0) e[`qty_${i}`] = 'Valid qty required';
+      if (!item.product_id) e[`p${i}`] = 'Select a product';
+      if (!item.quantity || Number(item.quantity) <= 0) e[`q${i}`] = 'Enter valid qty';
     });
     return e;
   };
@@ -65,50 +58,47 @@ export default function Orders() {
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
     try {
-      await createOrder({
-        customer_id: Number(form.customer_id),
-        items: form.items.map(item => ({ product_id: Number(item.product_id), quantity: Number(item.quantity) })),
-      });
-      showAlert('success', 'Order created successfully');
-      closeModal(); load();
+      await createOrder({ customer_id: Number(form.customer_id), items: form.items.map(item => ({ product_id: Number(item.product_id), quantity: Number(item.quantity) })) });
+      flash('success', 'Order placed successfully');
+      setModal(false); load();
     } catch (err) {
-      const detail = err.response?.data?.detail || 'Order creation failed';
-      setErrors({ api: detail });
+      setErrors({ api: err.response?.data?.detail || 'Failed to create order' });
     } finally { setSaving(false); }
   };
 
-  const handleDelete = async (o) => {
-    if (!window.confirm(`Cancel order #${o.id}? Stock will be restored.`)) return;
-    try {
-      await deleteOrder(o.id);
-      showAlert('success', 'Order cancelled, stock restored');
-      load();
-    } catch { showAlert('error', 'Failed to cancel order'); }
+  const handleCancel = async (o) => {
+    if (!window.confirm(`Cancel order #${String(o.id).padStart(4,'0')}? Stock will be restored.`)) return;
+    try { await deleteOrder(o.id); flash('success', 'Order cancelled, stock restored'); load(); }
+    catch { flash('error', 'Failed to cancel order'); }
   };
 
   return (
     <div className="page">
       <div className="page-header">
         <div>
-          <div className="page-title">ORDERS</div>
+          <div className="page-title">Orders</div>
           <div className="page-sub">{orders.length} total orders</div>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>+ Create Order</button>
+        <button className="btn btn-primary" onClick={openCreate}>+ Create Order</button>
       </div>
 
-      {alert && <div className={`alert alert-${alert.type === 'error' ? 'error' : 'success'}`}>{alert.msg}</div>}
+      {alert && <div className={`alert alert-${alert.type}`}>{alert.msg}</div>}
 
       {loading ? (
-        <div className="loading">LOADING...</div>
+        <div className="loading"><div className="spinner"></div>Loading orders...</div>
       ) : (
         <div className="table-wrap">
           <div className="table-toolbar">
-            <span className="table-title">Order Ledger</span>
+            <div className="table-info">
+              <div className="table-title">Order Ledger</div>
+              <div className="table-count">{orders.length} orders total</div>
+            </div>
           </div>
           {orders.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-icon">◐</div>
-              <div className="empty-text">No orders yet. Create your first order.</div>
+              <div className="empty-icon">🛒</div>
+              <div className="empty-title">No orders yet</div>
+              <div className="empty-desc">Create your first order to get started</div>
             </div>
           ) : (
             <table>
@@ -126,20 +116,21 @@ export default function Orders() {
               <tbody>
                 {orders.map(o => (
                   <tr key={o.id}>
-                    <td className="td-mono">#{String(o.id).padStart(4, '0')}</td>
-                    <td>{o.customer?.full_name || '—'}</td>
-                    <td className="td-mono">{o.items?.length || 0} item(s)</td>
-                    <td className="td-mono">₹{o.total_amount.toFixed(2)}</td>
+                    <td><span style={{fontWeight:600, color:'var(--accent)'}}>#{String(o.id).padStart(4,'0')}</span></td>
                     <td>
-                      <span className="td-badge badge-ok">{o.status.toUpperCase()}</span>
+                      <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                        <div className="avatar avatar-purple" style={{width:'28px',height:'28px',fontSize:'11px'}}>{initials(o.customer?.full_name || 'U')}</div>
+                        <span style={{fontWeight:500}}>{o.customer?.full_name}</span>
+                      </div>
                     </td>
-                    <td className="td-mono" style={{fontSize:'11px', color:'var(--text3)'}}>
-                      {new Date(o.created_at).toLocaleDateString()}
-                    </td>
+                    <td><span className="badge badge-neutral">{o.items?.length || 0} item{o.items?.length !== 1 ? 's' : ''}</span></td>
+                    <td><span style={{fontWeight:600}}>₹{o.total_amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</span></td>
+                    <td><span className="badge badge-success">Confirmed</span></td>
+                    <td><span className="td-secondary">{new Date(o.created_at).toLocaleDateString('en-IN')}</span></td>
                     <td>
                       <div style={{display:'flex', gap:'6px'}}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setDetailModal(o)}>View</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(o)}>Cancel</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setDetailOrder(o)}>View</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => handleCancel(o)}>Cancel</button>
                       </div>
                     </td>
                   </tr>
@@ -152,85 +143,69 @@ export default function Orders() {
 
       {/* Create Order Modal */}
       {modal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-          <div className="modal" style={{maxWidth: '600px'}}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
+          <div className="modal" style={{maxWidth:'560px'}}>
             <div className="modal-header">
-              <span className="modal-title">CREATE ORDER</span>
-              <button className="modal-close" onClick={closeModal}>✕</button>
+              <div className="modal-title">Create New Order</div>
+              <button className="modal-close" onClick={() => setModal(false)}>✕</button>
             </div>
             <div className="modal-body">
               {errors.api && <div className="alert alert-error">{errors.api}</div>}
               <div className="form-group">
-                <label className="form-label">Customer</label>
+                <label className="form-label">Customer *</label>
                 <select className="form-select" value={form.customer_id} onChange={e => setForm({...form, customer_id: e.target.value})}>
-                  <option value="">Select customer...</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.full_name} ({c.email})</option>)}
+                  <option value="">Select a customer...</option>
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.full_name} — {c.email}</option>)}
                 </select>
                 {errors.customer_id && <div className="form-error">{errors.customer_id}</div>}
               </div>
 
-              <div style={{marginBottom: '8px'}}>
-                <label className="form-label">Order Items</label>
-                {errors.items && <div className="form-error">{errors.items}</div>}
+              <div className="form-label" style={{marginBottom:'8px'}}>Order Items *</div>
+              <div className="order-items-section">
+                {form.items.map((item, i) => {
+                  const sel = products.find(p => String(p.id) === String(item.product_id));
+                  return (
+                    <div key={i}>
+                      <div className="order-item-row">
+                        <div>
+                          <select className="form-select" value={item.product_id} onChange={e => updateItem(i, 'product_id', e.target.value)}>
+                            <option value="">Select product...</option>
+                            {products.map(p => (
+                              <option key={p.id} value={p.id} disabled={p.quantity === 0}>
+                                {p.name} — ₹{p.price} (Stock: {p.quantity})
+                              </option>
+                            ))}
+                          </select>
+                          {errors[`p${i}`] && <div className="form-error">{errors[`p${i}`]}</div>}
+                        </div>
+                        <div>
+                          <input className="form-input" type="number" min="1" value={item.quantity} onChange={e => updateItem(i,'quantity',e.target.value)} placeholder="Qty" />
+                          {errors[`q${i}`] && <div className="form-error" style={{fontSize:'10px'}}>{errors[`q${i}`]}</div>}
+                        </div>
+                        <button className="remove-item-btn" onClick={() => removeItem(i)} disabled={form.items.length === 1}>✕</button>
+                      </div>
+                      {sel && item.quantity && (
+                        <div style={{fontSize:'11px', color:'var(--text-muted)', marginBottom:'8px', marginLeft:'2px'}}>
+                          Subtotal: ₹{(sel.price * Number(item.quantity)).toLocaleString('en-IN', {minimumFractionDigits:2})}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <button className="add-item-btn" onClick={addItem}>+ Add another item</button>
               </div>
 
-              {form.items.map((item, i) => {
-                const selProd = products.find(p => String(p.id) === String(item.product_id));
-                return (
-                  <div key={i}>
-                    <div className="order-item-row">
-                      <div>
-                        <select
-                          className="form-select"
-                          value={item.product_id}
-                          onChange={e => updateItem(i, 'product_id', e.target.value)}
-                        >
-                          <option value="">Select product...</option>
-                          {products.map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} — ₹{p.price} (Stock: {p.quantity})
-                            </option>
-                          ))}
-                        </select>
-                        {errors[`product_${i}`] && <div className="form-error">{errors[`product_${i}`]}</div>}
-                      </div>
-                      <div>
-                        <input
-                          className="form-input"
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={e => updateItem(i, 'quantity', e.target.value)}
-                          placeholder="Qty"
-                        />
-                        {errors[`qty_${i}`] && <div className="form-error">{errors[`qty_${i}`]}</div>}
-                      </div>
-                      <button className="remove-item-btn" onClick={() => removeItem(i)} disabled={form.items.length === 1}>✕</button>
-                    </div>
-                    {selProd && item.quantity && (
-                      <div style={{fontSize:'11px', color:'var(--text3)', fontFamily:'var(--mono)', marginBottom:'8px', marginLeft:'2px'}}>
-                        Subtotal: ₹{(selProd.price * Number(item.quantity)).toFixed(2)}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              <button className="add-item-btn" onClick={addItem}>+ Add another item</button>
-
               {estimatedTotal > 0 && (
-                <div style={{marginTop:'16px', padding:'12px', background:'var(--bg3)', borderRadius:'var(--radius)', border:'1px solid var(--border2)'}}>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                    <span style={{fontFamily:'var(--mono)', fontSize:'11px', color:'var(--text3)', letterSpacing:'1px', textTransform:'uppercase'}}>Estimated Total</span>
-                    <span style={{fontFamily:'var(--mono)', fontSize:'18px', color:'var(--accent)', fontWeight:'700'}}>₹{estimatedTotal.toFixed(2)}</span>
-                  </div>
+                <div className="order-total-box">
+                  <span className="order-total-label">Estimated Total</span>
+                  <span className="order-total-value">₹{estimatedTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
                 </div>
               )}
             </div>
             <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
+              <button className="btn btn-secondary" onClick={() => setModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
-                {saving ? 'Processing...' : 'Place Order'}
+                {saving ? 'Placing order...' : 'Place Order'}
               </button>
             </div>
           </div>
@@ -238,57 +213,56 @@ export default function Orders() {
       )}
 
       {/* Order Detail Modal */}
-      {detailModal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setDetailModal(null)}>
-          <div className="modal" style={{maxWidth: '560px'}}>
+      {detailOrder && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setDetailOrder(null)}>
+          <div className="modal" style={{maxWidth:'520px'}}>
             <div className="modal-header">
-              <span className="modal-title">ORDER #{String(detailModal.id).padStart(4, '0')}</span>
-              <button className="modal-close" onClick={() => setDetailModal(null)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'20px'}}>
-                <div>
-                  <div className="form-label">Customer</div>
-                  <div style={{color:'var(--text)', fontWeight:'500'}}>{detailModal.customer?.full_name}</div>
-                  <div style={{color:'var(--text3)', fontSize:'12px', fontFamily:'var(--mono)'}}>{detailModal.customer?.email}</div>
-                </div>
-                <div>
-                  <div className="form-label">Date</div>
-                  <div style={{color:'var(--text)', fontFamily:'var(--mono)', fontSize:'13px'}}>
-                    {new Date(detailModal.created_at).toLocaleString()}
-                  </div>
+              <div>
+                <div className="modal-title">Order #{String(detailOrder.id).padStart(4,'0')}</div>
+                <div style={{fontSize:'12px', color:'var(--text-secondary)', marginTop:'2px'}}>
+                  Placed on {new Date(detailOrder.created_at).toLocaleString('en-IN')}
                 </div>
               </div>
-              <div className="form-label" style={{marginBottom:'10px'}}>Items</div>
-              <div style={{border:'1px solid var(--border)', borderRadius:'var(--radius)', overflow:'hidden'}}>
-                <table style={{marginBottom:0}}>
+              <button className="modal-close" onClick={() => setDetailOrder(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'14px', marginBottom:'18px', display:'flex', alignItems:'center', gap:'12px'}}>
+                <div className="avatar avatar-purple">{initials(detailOrder.customer?.full_name || 'U')}</div>
+                <div>
+                  <div style={{fontWeight:600}}>{detailOrder.customer?.full_name}</div>
+                  <div style={{fontSize:'12px', color:'var(--text-secondary)'}}>{detailOrder.customer?.email} · {detailOrder.customer?.phone}</div>
+                </div>
+              </div>
+              <div style={{fontWeight:600, marginBottom:'10px', fontSize:'13px'}}>Items Ordered</div>
+              <div style={{border:'1px solid var(--border)', borderRadius:'var(--radius)', overflow:'hidden', marginBottom:'16px'}}>
+                <table>
                   <thead>
                     <tr>
                       <th>Product</th>
-                      <th>Qty</th>
-                      <th>Unit Price</th>
-                      <th>Subtotal</th>
+                      <th style={{textAlign:'center'}}>Qty</th>
+                      <th style={{textAlign:'right'}}>Unit Price</th>
+                      <th style={{textAlign:'right'}}>Subtotal</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {detailModal.items?.map(item => (
+                    {detailOrder.items?.map(item => (
                       <tr key={item.id}>
-                        <td>{item.product?.name || `Product #${item.product_id}`}</td>
-                        <td className="td-mono">{item.quantity}</td>
-                        <td className="td-mono">₹{item.unit_price.toFixed(2)}</td>
-                        <td className="td-mono">₹{(item.unit_price * item.quantity).toFixed(2)}</td>
+                        <td style={{fontWeight:500}}>{item.product?.name}</td>
+                        <td style={{textAlign:'center'}}><span className="badge badge-neutral">{item.quantity}</span></td>
+                        <td style={{textAlign:'right'}} className="td-secondary">₹{item.unit_price.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                        <td style={{textAlign:'right', fontWeight:600}}>₹{(item.unit_price * item.quantity).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div style={{display:'flex', justifyContent:'flex-end', marginTop:'16px', gap:'12px', alignItems:'center'}}>
-                <span style={{fontFamily:'var(--mono)', fontSize:'11px', color:'var(--text3)', textTransform:'uppercase', letterSpacing:'1px'}}>Total Amount</span>
-                <span style={{fontFamily:'var(--mono)', fontSize:'22px', color:'var(--accent)', fontWeight:'700'}}>₹{detailModal.total_amount.toFixed(2)}</span>
+              <div className="order-total-box">
+                <span className="order-total-label">Order Total</span>
+                <span className="order-total-value">₹{detailOrder.total_amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setDetailModal(null)}>Close</button>
+              <button className="btn btn-secondary" onClick={() => setDetailOrder(null)}>Close</button>
             </div>
           </div>
         </div>
