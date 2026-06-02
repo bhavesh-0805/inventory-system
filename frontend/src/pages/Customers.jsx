@@ -4,7 +4,7 @@ import { getCustomers, createCustomer, deleteCustomer } from '../services/api';
 const EMPTY = { full_name: '', email: '', phone: '' };
 
 function initials(name) {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 const avatarColors = ['avatar-purple', 'avatar-green', 'avatar-blue'];
 
@@ -20,11 +20,11 @@ export default function Customers() {
 
   const load = () => {
     setLoading(true);
-    getCustomers().then(r => setCustomers(r.data)).catch(() => flash('error','Failed to load customers')).finally(() => setLoading(false));
+    getCustomers().then(r => setCustomers(r.data)).catch(() => flash('error', 'Failed to load customers')).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
-  const flash = (type, msg) => { setAlert({type, msg}); setTimeout(() => setAlert(null), 4000); };
+  const flash = (type, msg) => { setAlert({ type, msg }); setTimeout(() => setAlert(null), 4000); };
 
   const validate = () => {
     const e = {};
@@ -74,52 +74,158 @@ export default function Customers() {
       {loading ? (
         <div className="loading"><div className="spinner"></div>Loading customers...</div>
       ) : (
-        <div className="table-wrap">
-          <div className="table-toolbar">
-            <div className="table-info">
-              <div className="table-title">Customer Registry</div>
-              <div className="table-count">{filtered.length} of {customers.length} customers</div>
+        <>
+          <div className="customers-hero">
+            <div>
+              <h1>👥 Customer Management</h1>
+              <p>
+                Manage customer profiles and contact information.
+              </p>
             </div>
-            <input className="form-input" style={{width:'220px'}} placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} />
+
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setForm(EMPTY);
+                setErrors({});
+                setModal(true);
+              }}
+            >
+              + Add Customer
+            </button>
           </div>
+
+          <div className="customer-stats-grid">
+
+            <div className="customer-stat-card">
+              <div className="customer-stat-icon">👥</div>
+              <div className="customer-stat-number">
+                {customers.length}
+              </div>
+              <div className="customer-stat-label">
+                Total Customers
+              </div>
+            </div>
+
+            <div className="customer-stat-card">
+              <div className="customer-stat-icon">📧</div>
+              <div className="customer-stat-number">
+                {customers.length}
+              </div>
+              <div className="customer-stat-label">
+                Email Accounts
+              </div>
+            </div>
+
+            <div className="customer-stat-card">
+              <div className="customer-stat-icon">📱</div>
+              <div className="customer-stat-number">
+                {customers.length}
+              </div>
+              <div className="customer-stat-label">
+                Phone Numbers
+              </div>
+            </div>
+
+          </div>
+
+          <div className="customers-toolbar">
+            <div className="customers-search">
+              <span>🔍</span>
+
+              <input
+                className="customers-search-input"
+                placeholder="Search customers..."
+                value={search}
+                onChange={(e) =>
+                  setSearch(e.target.value)
+                }
+              />
+            </div>
+          </div>
+
           {filtered.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">👥</div>
-              <div className="empty-title">{search ? 'No customers match your search' : 'No customers yet'}</div>
-              <div className="empty-desc">{search ? 'Try a different search term' : 'Add your first customer to get started'}</div>
+
+              <div className="empty-title">
+                No customers found
+              </div>
+
+              <div className="empty-desc">
+                Add your first customer
+              </div>
             </div>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Email</th>
-                  <th>Phone</th>
-                  <th>Registered</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c, i) => (
-                  <tr key={c.id}>
-                    <td>
-                      <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                        <div className={`avatar ${avatarColors[i % avatarColors.length]}`}>{initials(c.full_name)}</div>
-                        <div style={{fontWeight:500}}>{c.full_name}</div>
-                      </div>
-                    </td>
-                    <td><span className="td-secondary">{c.email}</span></td>
-                    <td><span className="td-secondary">{c.phone}</span></td>
-                    <td><span className="td-secondary">{new Date(c.created_at).toLocaleDateString('en-IN')}</span></td>
-                    <td>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(c)}>Remove</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="customers-grid">
+
+              {filtered.map((c, i) => (
+
+                <div
+                  key={c.id}
+                  className="customer-card"
+                >
+
+                  <div className="customer-top">
+
+                    <div
+                      className={`avatar ${avatarColors[
+                        i %
+                        avatarColors.length
+                        ]
+                        }`}
+                      style={{
+                        width: "60px",
+                        height: "60px",
+                        fontSize: "18px"
+                      }}
+                    >
+                      {initials(c.full_name)}
+                    </div>
+
+                  </div>
+
+                  <h3 className="customer-name">
+                    {c.full_name}
+                  </h3>
+
+                  <div className="customer-email">
+                    📧 {c.email}
+                  </div>
+
+                  <div className="customer-phone">
+                    📱 {c.phone}
+                  </div>
+
+                  <div className="customer-date">
+                    Joined{" "}
+                    {new Date(
+                      c.created_at
+                    ).toLocaleDateString(
+                      "en-IN"
+                    )}
+                  </div>
+
+                  <button
+                    className="btn btn-danger"
+                    style={{
+                      width: "100%",
+                      marginTop: "16px"
+                    }}
+                    onClick={() =>
+                      handleDelete(c)
+                    }
+                  >
+                    Remove Customer
+                  </button>
+
+                </div>
+
+              ))}
+
+            </div>
           )}
-        </div>
+        </>
       )}
 
       {modal && (
@@ -133,18 +239,18 @@ export default function Customers() {
               {errors.api && <div className="alert alert-error">{errors.api}</div>}
               <div className="form-group">
                 <label className="form-label">Full Name *</label>
-                <input className="form-input" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} placeholder="e.g. Priya Sharma" />
+                <input className="form-input" value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} placeholder="e.g. Priya Sharma" />
                 {errors.full_name && <div className="form-error">{errors.full_name}</div>}
               </div>
               <div className="form-group">
                 <label className="form-label">Email Address *</label>
-                <input className="form-input" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="priya@example.com" />
+                <input className="form-input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="priya@example.com" />
                 {errors.email && <div className="form-error">{errors.email}</div>}
                 <div className="form-hint">Must be unique — used as login identifier.</div>
               </div>
               <div className="form-group">
                 <label className="form-label">Phone Number *</label>
-                <input className="form-input" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+91 98765 43210" />
+                <input className="form-input" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+91 98765 43210" />
                 {errors.phone && <div className="form-error">{errors.phone}</div>}
               </div>
             </div>
