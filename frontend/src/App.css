@@ -943,12 +943,13 @@ tbody tr:hover .product-thumb {
   padding:28px;
   border-radius:20px;
   margin-bottom:24px;
+  color:white;
+
   background:linear-gradient(
     135deg,
-    #2563eb,
-    #3b82f6
+    var(--accent),
+    #9333ea
   );
-  color:white;
 }
 
 .customer-stats-grid{
