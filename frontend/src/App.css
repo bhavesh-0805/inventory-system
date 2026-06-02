@@ -1067,3 +1067,122 @@ tbody tr:hover .product-thumb {
   }
 
 }
+
+/* =========================
+   ORDERS PAGE
+========================= */
+
+.orders-hero{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:28px;
+  margin-bottom:24px;
+  border-radius:20px;
+  color:white;
+  background:linear-gradient(
+    135deg,
+    var(--accent),
+    #9333ea
+  );
+}
+
+.order-stats-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+  margin-bottom:24px;
+}
+
+.order-stat-card{
+  background:white;
+  border-radius:16px;
+  padding:24px;
+  text-align:center;
+  border:1px solid var(--border);
+  box-shadow:var(--shadow-sm);
+}
+
+.order-stat-card:hover{
+  transform:translateY(-5px);
+  transition:.3s;
+}
+
+.order-stat-icon{
+  font-size:30px;
+  margin-bottom:10px;
+}
+
+.order-stat-number{
+  font-size:26px;
+  font-weight:700;
+}
+
+.order-stat-label{
+  color:var(--text-secondary);
+}
+
+.orders-grid{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fill,minmax(320px,1fr));
+  gap:20px;
+}
+
+.order-card{
+  background:white;
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:20px;
+  box-shadow:var(--shadow-sm);
+}
+
+.order-card:hover{
+  transform:translateY(-5px);
+  transition:.3s;
+}
+
+.order-card-top{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:18px;
+}
+
+.order-id{
+  color:var(--accent);
+  font-size:18px;
+  font-weight:700;
+}
+
+.order-date{
+  color:var(--text-muted);
+  font-size:12px;
+}
+
+.order-customer{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  margin-bottom:18px;
+}
+
+.order-info{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:18px;
+}
+
+.order-price{
+  color:var(--success);
+  font-size:20px;
+  font-weight:700;
+}
+
+.order-actions{
+  display:flex;
+  gap:10px;
+}
+
+.order-actions .btn{
+  flex:1;
+}

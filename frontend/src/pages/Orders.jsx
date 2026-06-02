@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getOrders, createOrder, deleteOrder, getProducts, getCustomers } from '../services/api';
 
 function initials(name) {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
 export default function Orders() {
@@ -20,22 +20,22 @@ export default function Orders() {
   const load = () => {
     setLoading(true);
     Promise.all([getOrders(), getProducts(), getCustomers()])
-      .then(([o,p,c]) => { setOrders(o.data); setProducts(p.data); setCustomers(c.data); })
-      .catch(() => flash('error','Failed to load data'))
+      .then(([o, p, c]) => { setOrders(o.data); setProducts(p.data); setCustomers(c.data); })
+      .catch(() => flash('error', 'Failed to load data'))
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
-  const flash = (type, msg) => { setAlert({type, msg}); setTimeout(() => setAlert(null), 4000); };
+  const flash = (type, msg) => { setAlert({ type, msg }); setTimeout(() => setAlert(null), 4000); };
 
   const openCreate = () => { setForm({ customer_id: '', items: [{ product_id: '', quantity: '1' }] }); setErrors({}); setModal(true); };
 
-  const addItem = () => setForm({...form, items: [...form.items, { product_id: '', quantity: '1' }]});
-  const removeItem = i => setForm({...form, items: form.items.filter((_,idx) => idx !== i)});
+  const addItem = () => setForm({ ...form, items: [...form.items, { product_id: '', quantity: '1' }] });
+  const removeItem = i => setForm({ ...form, items: form.items.filter((_, idx) => idx !== i) });
   const updateItem = (i, field, val) => {
     const items = [...form.items];
-    items[i] = {...items[i], [field]: val};
-    setForm({...form, items});
+    items[i] = { ...items[i], [field]: val };
+    setForm({ ...form, items });
   };
 
   const estimatedTotal = form.items.reduce((sum, item) => {
@@ -67,19 +67,69 @@ export default function Orders() {
   };
 
   const handleCancel = async (o) => {
-    if (!window.confirm(`Cancel order #${String(o.id).padStart(4,'0')}? Stock will be restored.`)) return;
+    if (!window.confirm(`Cancel order #${String(o.id).padStart(4, '0')}? Stock will be restored.`)) return;
     try { await deleteOrder(o.id); flash('success', 'Order cancelled, stock restored'); load(); }
     catch { flash('error', 'Failed to cancel order'); }
   };
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="orders-hero">
         <div>
-          <div className="page-title">Orders</div>
-          <div className="page-sub">{orders.length} total orders</div>
+          <h1>🛒 Order Management</h1>
+          <p>
+            Track orders, customers and revenue.
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>+ Create Order</button>
+
+        <button
+          className="btn btn-primary"
+          onClick={openCreate}
+        >
+          + Create Order
+        </button>
+      </div>
+
+      <div className="order-stats-grid">
+
+        <div className="order-stat-card">
+          <div className="order-stat-icon">🛒</div>
+          <div className="order-stat-number">
+            {orders.length}
+          </div>
+          <div className="order-stat-label">
+            Total Orders
+          </div>
+        </div>
+
+        <div className="order-stat-card">
+          <div className="order-stat-icon">👥</div>
+          <div className="order-stat-number">
+            {customers.length}
+          </div>
+          <div className="order-stat-label">
+            Customers
+          </div>
+        </div>
+
+        <div className="order-stat-card">
+          <div className="order-stat-icon">💰</div>
+          <div className="order-stat-number">
+            ₹{
+              orders
+                .reduce(
+                  (sum, o) =>
+                    sum + o.total_amount,
+                  0
+                )
+                .toLocaleString("en-IN")
+            }
+          </div>
+          <div className="order-stat-label">
+            Revenue
+          </div>
+        </div>
+
       </div>
 
       {alert && <div className={`alert alert-${alert.type}`}>{alert.msg}</div>}
@@ -101,42 +151,110 @@ export default function Orders() {
               <div className="empty-desc">Create your first order to get started</div>
             </div>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Customer</th>
-                  <th>Items</th>
-                  <th>Total</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map(o => (
-                  <tr key={o.id}>
-                    <td><span style={{fontWeight:600, color:'var(--accent)'}}>#{String(o.id).padStart(4,'0')}</span></td>
-                    <td>
-                      <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                        <div className="avatar avatar-purple" style={{width:'28px',height:'28px',fontSize:'11px'}}>{initials(o.customer?.full_name || 'U')}</div>
-                        <span style={{fontWeight:500}}>{o.customer?.full_name}</span>
+            <div className="orders-grid">
+
+              {orders.map((o) => (
+
+                <div
+                  key={o.id}
+                  className="order-card"
+                >
+
+                  <div className="order-card-top">
+
+                    <div>
+                      <div className="order-id">
+                        #{String(o.id).padStart(4, "0")}
                       </div>
-                    </td>
-                    <td><span className="badge badge-neutral">{o.items?.length || 0} item{o.items?.length !== 1 ? 's' : ''}</span></td>
-                    <td><span style={{fontWeight:600}}>₹{o.total_amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</span></td>
-                    <td><span className="badge badge-success">Confirmed</span></td>
-                    <td><span className="td-secondary">{new Date(o.created_at).toLocaleDateString('en-IN')}</span></td>
-                    <td>
-                      <div style={{display:'flex', gap:'6px'}}>
-                        <button className="btn btn-secondary btn-sm" onClick={() => setDetailOrder(o)}>View</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleCancel(o)}>Cancel</button>
+
+                      <div className="order-date">
+                        {new Date(
+                          o.created_at
+                        ).toLocaleDateString(
+                          "en-IN"
+                        )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+
+                    <span className="badge badge-success">
+                      Confirmed
+                    </span>
+
+                  </div>
+
+                  <div className="order-customer">
+
+                    <div
+                      className="avatar avatar-purple"
+                    >
+                      {initials(
+                        o.customer?.full_name || "U"
+                      )}
+                    </div>
+
+                    <div>
+                      <div
+                        style={{
+                          fontWeight: 600
+                        }}
+                      >
+                        {o.customer?.full_name}
+                      </div>
+
+                      <div
+                        className="td-secondary"
+                      >
+                        {o.customer?.email}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <div className="order-info">
+
+                    <div>
+                      📦 {o.items?.length} Items
+                    </div>
+
+                    <div className="order-price">
+                      ₹
+                      {o.total_amount.toLocaleString(
+                        "en-IN",
+                        {
+                          minimumFractionDigits: 2
+                        }
+                      )}
+                    </div>
+
+                  </div>
+
+                  <div className="order-actions">
+
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() =>
+                        setDetailOrder(o)
+                      }
+                    >
+                      View
+                    </button>
+
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() =>
+                        handleCancel(o)
+                      }
+                    >
+                      Cancel
+                    </button>
+
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
           )}
         </div>
       )}
@@ -144,7 +262,7 @@ export default function Orders() {
       {/* Create Order Modal */}
       {modal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
-          <div className="modal" style={{maxWidth:'560px'}}>
+          <div className="modal" style={{ maxWidth: '560px' }}>
             <div className="modal-header">
               <div className="modal-title">Create New Order</div>
               <button className="modal-close" onClick={() => setModal(false)}>✕</button>
@@ -153,14 +271,14 @@ export default function Orders() {
               {errors.api && <div className="alert alert-error">{errors.api}</div>}
               <div className="form-group">
                 <label className="form-label">Customer *</label>
-                <select className="form-select" value={form.customer_id} onChange={e => setForm({...form, customer_id: e.target.value})}>
+                <select className="form-select" value={form.customer_id} onChange={e => setForm({ ...form, customer_id: e.target.value })}>
                   <option value="">Select a customer...</option>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.full_name} — {c.email}</option>)}
                 </select>
                 {errors.customer_id && <div className="form-error">{errors.customer_id}</div>}
               </div>
 
-              <div className="form-label" style={{marginBottom:'8px'}}>Order Items *</div>
+              <div className="form-label" style={{ marginBottom: '8px' }}>Order Items *</div>
               <div className="order-items-section">
                 {form.items.map((item, i) => {
                   const sel = products.find(p => String(p.id) === String(item.product_id));
@@ -179,14 +297,14 @@ export default function Orders() {
                           {errors[`p${i}`] && <div className="form-error">{errors[`p${i}`]}</div>}
                         </div>
                         <div>
-                          <input className="form-input" type="number" min="1" value={item.quantity} onChange={e => updateItem(i,'quantity',e.target.value)} placeholder="Qty" />
-                          {errors[`q${i}`] && <div className="form-error" style={{fontSize:'10px'}}>{errors[`q${i}`]}</div>}
+                          <input className="form-input" type="number" min="1" value={item.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)} placeholder="Qty" />
+                          {errors[`q${i}`] && <div className="form-error" style={{ fontSize: '10px' }}>{errors[`q${i}`]}</div>}
                         </div>
                         <button className="remove-item-btn" onClick={() => removeItem(i)} disabled={form.items.length === 1}>✕</button>
                       </div>
                       {sel && item.quantity && (
-                        <div style={{fontSize:'11px', color:'var(--text-muted)', marginBottom:'8px', marginLeft:'2px'}}>
-                          Subtotal: ₹{(sel.price * Number(item.quantity)).toLocaleString('en-IN', {minimumFractionDigits:2})}
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', marginLeft: '2px' }}>
+                          Subtotal: ₹{(sel.price * Number(item.quantity)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </div>
                       )}
                     </div>
@@ -198,7 +316,7 @@ export default function Orders() {
               {estimatedTotal > 0 && (
                 <div className="order-total-box">
                   <span className="order-total-label">Estimated Total</span>
-                  <span className="order-total-value">₹{estimatedTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
+                  <span className="order-total-value">₹{estimatedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
               )}
             </div>
@@ -215,42 +333,42 @@ export default function Orders() {
       {/* Order Detail Modal */}
       {detailOrder && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setDetailOrder(null)}>
-          <div className="modal" style={{maxWidth:'520px'}}>
+          <div className="modal" style={{ maxWidth: '520px' }}>
             <div className="modal-header">
               <div>
-                <div className="modal-title">Order #{String(detailOrder.id).padStart(4,'0')}</div>
-                <div style={{fontSize:'12px', color:'var(--text-secondary)', marginTop:'2px'}}>
+                <div className="modal-title">Order #{String(detailOrder.id).padStart(4, '0')}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                   Placed on {new Date(detailOrder.created_at).toLocaleString('en-IN')}
                 </div>
               </div>
               <button className="modal-close" onClick={() => setDetailOrder(null)}>✕</button>
             </div>
             <div className="modal-body">
-              <div style={{background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'14px', marginBottom:'18px', display:'flex', alignItems:'center', gap:'12px'}}>
+              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '14px', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div className="avatar avatar-purple">{initials(detailOrder.customer?.full_name || 'U')}</div>
                 <div>
-                  <div style={{fontWeight:600}}>{detailOrder.customer?.full_name}</div>
-                  <div style={{fontSize:'12px', color:'var(--text-secondary)'}}>{detailOrder.customer?.email} · {detailOrder.customer?.phone}</div>
+                  <div style={{ fontWeight: 600 }}>{detailOrder.customer?.full_name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{detailOrder.customer?.email} · {detailOrder.customer?.phone}</div>
                 </div>
               </div>
-              <div style={{fontWeight:600, marginBottom:'10px', fontSize:'13px'}}>Items Ordered</div>
-              <div style={{border:'1px solid var(--border)', borderRadius:'var(--radius)', overflow:'hidden', marginBottom:'16px'}}>
+              <div style={{ fontWeight: 600, marginBottom: '10px', fontSize: '13px' }}>Items Ordered</div>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', marginBottom: '16px' }}>
                 <table>
                   <thead>
                     <tr>
                       <th>Product</th>
-                      <th style={{textAlign:'center'}}>Qty</th>
-                      <th style={{textAlign:'right'}}>Unit Price</th>
-                      <th style={{textAlign:'right'}}>Subtotal</th>
+                      <th style={{ textAlign: 'center' }}>Qty</th>
+                      <th style={{ textAlign: 'right' }}>Unit Price</th>
+                      <th style={{ textAlign: 'right' }}>Subtotal</th>
                     </tr>
                   </thead>
                   <tbody>
                     {detailOrder.items?.map(item => (
                       <tr key={item.id}>
-                        <td style={{fontWeight:500}}>{item.product?.name}</td>
-                        <td style={{textAlign:'center'}}><span className="badge badge-neutral">{item.quantity}</span></td>
-                        <td style={{textAlign:'right'}} className="td-secondary">₹{item.unit_price.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
-                        <td style={{textAlign:'right', fontWeight:600}}>₹{(item.unit_price * item.quantity).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                        <td style={{ fontWeight: 500 }}>{item.product?.name}</td>
+                        <td style={{ textAlign: 'center' }}><span className="badge badge-neutral">{item.quantity}</span></td>
+                        <td style={{ textAlign: 'right' }} className="td-secondary">₹{item.unit_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>₹{(item.unit_price * item.quantity).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -258,7 +376,7 @@ export default function Orders() {
               </div>
               <div className="order-total-box">
                 <span className="order-total-label">Order Total</span>
-                <span className="order-total-value">₹{detailOrder.total_amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
+                <span className="order-total-value">₹{detailOrder.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
             <div className="modal-footer">
